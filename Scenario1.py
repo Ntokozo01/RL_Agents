@@ -42,7 +42,6 @@ def nextAction(currentState, exploration_rate):
     else:
         return  np.argmax(q_table[currentState])
         
-    
     return MOVES[a]   
 
 def findPackage(fourRoomsObj, packagesToCollect, exploration_rate):
@@ -86,9 +85,7 @@ def train(i, fourRoomsObj, packagesToCollect):
             packagesToCollect -= 1
             
             rewards[(prevPosX, prevPosY)][action] = 100
-            #print("Package collected at {0}".format((nextPosX, nextPosY)))
-            #print("Is terminal:", isTerminal)
-            
+            #print("Package collected at {0}".format((nextPosX, nextPosY)))            
         
         q_learn((prevPosX, prevPosY), action, (nextPosX, nextPosY)) 
         
@@ -97,7 +94,6 @@ def train(i, fourRoomsObj, packagesToCollect):
             #fourRoomsObj.showPath(-1, "image_{0}.png".format(i))
             return j+1
     
-        
         prevPosX = nextPosX
         prevPosY = nextPosY
     return MAX_ITERATIONS
@@ -120,12 +116,9 @@ for i in range(NUM_EPOCHS):
     #print("Epsilon greedy is {0}".format(exploration_rate))
     
     total_actions = train(i, fourRoomsObj, k)
-    """try:
-        total_actions = train(i, fourRoomsObj, k)
-    except:
-        print("An Exception occured!")"""
     
     #print("Total actions taken:", total_actions)
+    
     exploration_rate = max(0.01, exploration_rate * 0.99)
     
 exploration_rate = 0
@@ -150,7 +143,5 @@ for y in range(NUM_ROWS):
 #         print("{:>3}".format(max(rewards[state])), end=" ")
 #     print("")
 # #print(rewards) 
-
-
 
 fourRoomsObj.showPath(-1, "image_N.png")
