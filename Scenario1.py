@@ -46,16 +46,20 @@ def nextAction(currentState, exploration_rate):
 
 def findPackage(fourRoomsObj, packagesToCollect, exploration_rate):
     (prevPosX, prevPosY) = fourRoomsObj.getPosition()
+    print("Agent starts at: {0}".format((prevPosX, prevPosY)))
+
     for j in range(MAX_ITERATIONS):
         action = nextAction((prevPosX, prevPosY), exploration_rate)
         
         gridType, (nextPosX, nextPosY), packagesRemaining, isTerminal = fourRoomsObj.takeAction(action)
+        print("Agent took {0} action and moved to {1}".format (action, (nextPosX, nextPosY)))
         
         if (packagesToCollect > packagesRemaining):
+            print("Package collected at {0}".format((nextPosX, nextPosY)))
             packagesToCollect -= 1
         
         if packagesRemaining == 0:
-            fourRoomsObj.showPath(-1, "image_N.png")
+            fourRoomsObj.showPath(-1, "image_N1.png")
             return j+1
         
         prevPosX = nextPosX
@@ -73,10 +77,10 @@ def train(i, fourRoomsObj, packagesToCollect):
         
         if (prevPosX == nextPosX) and (prevPosY == nextPosY):
             observed_environment[prevPosY][prevPosX] = BARRIER
-            rewards[(nextPosX, nextPosY)][action] = BARRIER
+            #rewards[(nextPosX, nextPosY)][action] = BARRIER
              
         else:
-           rewards[(nextPosX, nextPosY)][action] = 0
+           rewards[(prevPosX, prevPosY)][action] = 0
 
         #if i == NUM_EPOCHS -1:
         #    print("Agent took {0} action and moved to {1}".format (action, (nextPosX, nextPosY)))
@@ -100,8 +104,8 @@ def train(i, fourRoomsObj, packagesToCollect):
 
 fourRoomsObj = FourRooms("simple")
 
-NUM_EPOCHS = 1000
-MAX_ITERATIONS = 10000
+NUM_EPOCHS = 500
+MAX_ITERATIONS = 900
 
 k = fourRoomsObj.getPackagesRemaining()
 print("Packages to collect:", k)
@@ -122,8 +126,6 @@ for i in range(NUM_EPOCHS):
     exploration_rate = max(0.01, exploration_rate * 0.99)
     
 exploration_rate = 0
-#fourRoomsObj.newEpoch()
-#findPackage(fourRoomsObj, k, 0)
 
 print("Q function")
 for y in range(NUM_ROWS):
@@ -145,3 +147,7 @@ for y in range(NUM_ROWS):
 # #print(rewards) 
 
 fourRoomsObj.showPath(-1, "image_N.png")
+
+fourRoomsObj.newEpoch()
+findPackage(fourRoomsObj, k, 0)
+fourRoomsObj.showPath(-1, "image_N1.png")
