@@ -17,7 +17,7 @@ q_table = np.zeros((NUM_ROWS, NUM_COLS, len(MOVES)))
 # Initialise the reward function of same size as Q-table to Null(-1) rewards
 rewards = np.full((NUM_ROWS, NUM_COLS, len(MOVES)), -1)
 
-discount_rate = 0.7 # gamma
+discount_rate = 0.9 # gamma
 learning_rate = 0.6 # alpha
 exploration_rate = 1 # epsilon greedy
 
@@ -37,75 +37,70 @@ def q_learn(currentState, action, nextState):
 
 # Predicts the next action
 def nextAction(currentState, exploration_rate):
+    a = 0
     if random.uniform(0,1) < exploration_rate:
-        return  random.randint(0, 3)
+        a = random.randint(0, 3)
     else:
-        return  np.argmax(q_table[currentState])
+        a = np.argmax(q_table[currentState])
         
     return MOVES[a]   
 
 def findPackage(fourRoomsObj, packagesToCollect, exploration_rate):
-    (prevPosX, prevPosY) = fourRoomsObj.getPosition()
-    print("Agent starts at: {0}".format((prevPosX, prevPosY)))
+    state = fourRoomsObj.getPosition()
+    print("Agent starts at: {0}".format(state))
 
     for j in range(MAX_ITERATIONS):
-        action = nextAction((prevPosX, prevPosY), exploration_rate)
+        action = nextAction(state, exploration_rate)
         
-        gridType, (nextPosX, nextPosY), packagesRemaining, isTerminal = fourRoomsObj.takeAction(action)
-        print("Agent took {0} action and moved to {1}".format (action, (nextPosX, nextPosY)))
+        gridType, nextState, packagesRemaining, isTerminal = fourRoomsObj.takeAction(action)
+        print("Agent took {0} action and moved to {1}".format (action, nextState))
         
         if (packagesToCollect > packagesRemaining):
-            print("Package collected at {0}".format((nextPosX, nextPosY)))
+            print("Package collected at {0}".format(nextState))
             packagesToCollect -= 1
         
         if packagesRemaining == 0:
             fourRoomsObj.showPath(-1, "image_N1.png")
             return j+1
         
-        prevPosX = nextPosX
-        prevPosY = nextPosY
+        state = nextState
         
     return MAX_ITERATIONS
 
 def train(i, fourRoomsObj, packagesToCollect):
-    (prevPosX, prevPosY) = fourRoomsObj.getPosition() # Get initial State of the Agent in the environment
+    state = fourRoomsObj.getPosition() # Get initial State of the Agent in the environment
     
     for j in range(MAX_ITERATIONS):
-        action = nextAction((prevPosX, prevPosY), exploration_rate)
+        action = nextAction(state, exploration_rate)
         
-        gridType, (nextPosX, nextPosY), packagesRemaining, isTerminal = fourRoomsObj.takeAction(action)
+        gridType, nextState, packagesRemaining, isTerminal = fourRoomsObj.takeAction(action)
         
-        if (prevPosX == nextPosX) and (prevPosY == nextPosY):
-            observed_environment[prevPosY][prevPosX] = BARRIER
-            #rewards[(nextPosX, nextPosY)][action] = BARRIER
-             
-        else:
-           rewards[(prevPosX, prevPosY)][action] = 0
+        if state != nextState:
+           rewards[state][action] = 0
 
         #if i == NUM_EPOCHS -1:
-        #    print("Agent took {0} action and moved to {1}".format (action, (nextPosX, nextPosY)))
+        #    print("Agent took {0} action and moved to {1}".format (action, nextState))
         
         if (packagesToCollect > packagesRemaining):
             packagesToCollect -= 1
             
-            rewards[(prevPosX, prevPosY)][action] = 100
-            #print("Package collected at {0}".format((nextPosX, nextPosY)))            
+            rewards[state][action] = 100
+            #print("Package collected at {0}".format(nextState))            
         
-        q_learn((prevPosX, prevPosY), action, (nextPosX, nextPosY)) 
-        
+        q_learn(state, action, nextState) 
         
         if packagesRemaining == 0:
             #fourRoomsObj.showPath(-1, "image_{0}.png".format(i))
             return j+1
     
-        prevPosX = nextPosX
-        prevPosY = nextPosY
+        state = nextState
+        
     return MAX_ITERATIONS
 
 fourRoomsObj = FourRooms("simple")
 
-NUM_EPOCHS = 500
-MAX_ITERATIONS = 900
+NUM_EPOCHS = 100
+MAX_ITERATIONS = 2500
 
 k = fourRoomsObj.getPackagesRemaining()
 print("Packages to collect:", k)
@@ -146,8 +141,11 @@ for y in range(NUM_ROWS):
 #     print("")
 # #print(rewards) 
 
+# Display the last training agent path
 fourRoomsObj.showPath(-1, "image_N.png")
 
+# Display the agent's path to collect the package using 100% explotation
 fourRoomsObj.newEpoch()
-findPackage(fourRoomsObj, k, 0)
+#findPackage(fourRoomsObj, k, 0)
+train(0, fourRoomsObj, k)
 fourRoomsObj.showPath(-1, "image_N1.png")

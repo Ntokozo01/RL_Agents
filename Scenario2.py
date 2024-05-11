@@ -23,7 +23,31 @@ discount_rate = 0.5 # gamma
 learning_rate = 0.4 # alpha
 exploration_rate = 1 # epsilon greedy
 
-# Checks whether the future move will result in a BARRIER, out off-bounds or unmovable state from the observed environment
+
+def reward_function(state, action, next_state, packages_remaining, type):
+    action_penalty = -0.1
+    collection_reward = 10
+    barrier = -1
+    completion_reward = 100
+
+    reward = action_penalty  # Default reward for making an action
+
+    # Check if the action made was to a barrier or wall
+    if next_state == state:
+        reward += barrier
+    else:
+        # Check if the action lead to collecting a package
+        if type != gTypes[0]:
+            reward += collection_reward
+            #package_locations.pop(type)  # Remove collected package from the list
+
+        # Check if all packages are collected
+        if packages_remaining == 0:
+            reward += completion_reward
+
+    return reward
+
+
 
 """ Calculate Q(S,a) for future rewards with great benefits
     currentState - (x, y) tuple
@@ -48,11 +72,11 @@ def nextAction(currentState, exploration_rate):
     return MOVES[a]
 
 def findPackage(fourRoomsObj, packagesToCollect, exploration_rate):
-    (prevPosX, prevPosY) = fourRoomsObj.getPosition()
+    state = fourRoomsObj.getPosition()
     for j in range(MAX_ITERATIONS):
-        action = nextAction((prevPosX, prevPosY), exploration_rate)
+        action = nextAction(state, exploration_rate)
         
-        gridType, (nextPosX, nextPosY), packagesRemaining, isTerminal = fourRoomsObj.takeAction(action)
+        gridType, nextState, packagesRemaining, isTerminal = fourRoomsObj.takeAction(action)
         
         if (packagesToCollect > packagesRemaining):
             packagesToCollect -= 1
@@ -61,54 +85,62 @@ def findPackage(fourRoomsObj, packagesToCollect, exploration_rate):
             fourRoomsObj.showPath(-1, "image_N.png")
             return j+1
         
-        prevPosX = nextPosX
-        prevPosY = nextPosY
+        state = nextState
         
     return MAX_ITERATIONS
 
 def train(i, fourRoomsObj, packagesToCollect):
-    (prevPosX, prevPosY) = fourRoomsObj.getPosition() # Get initial State of the Agent in the environment
+    state = fourRoomsObj.getPosition() # Get initial State of the Agent in the environment
     
     for j in range(MAX_ITERATIONS):
-        action = nextAction((prevPosX, prevPosY), exploration_rate)
+        action = nextAction(state, exploration_rate)
         
-        gridType, (nextPosX, nextPosY), packagesRemaining, isTerminal = fourRoomsObj.takeAction(action)
+        gridType, nextState, packagesRemaining, isTerminal = fourRoomsObj.takeAction(action)
         
-        if (prevPosX == nextPosX) and (prevPosY == nextPosY):
-            observed_environment[prevPosY][prevPosX] = BARRIER
-             
-        else:
-            reward = rewards[(prevPosX, prevPosY)][action]
+        """"if (packagesToCollect > packagesRemaining):
+            package_locations.update({gTypes[gridType]: nextState})
+            packagesToCollect -= 1
+        """   
+        if state != nextState:
+            reward = rewards[state][action]
+            rewards[state][action] = max(0, reward)
             
             if (packagesToCollect > packagesRemaining):
-                print("Current reward at {0} is {1}".format((prevPosX, prevPosY), reward))
+                if packagesRemaining == 0 and len(package_locations) != 3:
+                    rewards[nextState] = [500, 500, 500, 500]
+                    
+                print("Current reward at {0} is {1}".format(state, reward))
+                package_locations.update({gTypes[gridType]: nextState})
                 if reward < 100:
-                    reward = 100 * (k - packagesRemaining)
-                    rewards[(prevPosX, prevPosY)][action] = reward
-                print("Package of type {0} collected at {1} with reward {2}".format(gTypes[gridType],(nextPosX, nextPosY), reward))
-                packagesToCollect -= 1 
-            else:
-                if (gTypes[gridType] == 'EMPTY'):
-                   rewards[(prevPosX, prevPosY)][action] = 0  
-                   #print("Agent took {0} action and moved to {1} of type {2}".format (action, (nextPosX, nextPosY), gTypes[gridType]))
+                    reward = 100 
+                    rewards[state][action] = reward
+                print("Package of type {0} collected at {1} with reward {2}".format(gTypes[gridType],nextState, reward))
+                packagesToCollect -= 1   
+                   #print("Agent took {0} action and moved to {1} of type {2}".format (action, nextState, gTypes[gridType]))
         
         #if i == NUM_EPOCHS -1:
-        #    print("Agent took {0} action and moved to {1}".format (action, (nextPosX, nextPosY)))
+        #    print("Agent took {0} action and moved to {1}".format (action, nextState))
+        """
+        reward = reward_function(state, action, nextState, packagesRemaining, gTypes[gridType]) 
+        rewards[state][action] = reward
+        """
         
-        q_learn((prevPosX, prevPosY), action, (nextPosX, nextPosY)) 
+        q_learn(state, action, nextState) 
         
         
         if packagesRemaining == 0:
+            #if len(package_locations) != 3:
+            #    q_table[nextState] = [500, 500, 500, 500]
             #fourRoomsObj.showPath(-1, "image_{0}.png".format(i))
             return j+1
     
-        prevPosX = nextPosX
-        prevPosY = nextPosY
+        state = nextState
+        
     return MAX_ITERATIONS
 
 fourRoomsObj = FourRooms("multi")
 
-NUM_EPOCHS = 500
+NUM_EPOCHS = 100
 MAX_ITERATIONS = 2500
 
 k = fourRoomsObj.getPackagesRemaining()
@@ -116,6 +148,8 @@ print("Packages to collect:", k)
 
 (startX, startY) = fourRoomsObj.getPosition() 
 print("Agent starts at: {0}".format((startX, startY)))
+
+package_locations = {}
 
 for i in range(NUM_EPOCHS):
     fourRoomsObj.newEpoch()
@@ -125,13 +159,11 @@ for i in range(NUM_EPOCHS):
     
     total_actions = train(i, fourRoomsObj, k)
     
-    #print("Total actions taken:", total_actions)
+    print("Total actions taken:", total_actions)
     
     exploration_rate = max(0.01, exploration_rate * 0.99)
     
 exploration_rate = 0
-#fourRoomsObj.newEpoch()
-#findPackage(fourRoomsObj, k, 0)
 
 print("Q function")
 for y in range(NUM_ROWS):
@@ -151,5 +183,11 @@ for y in range(NUM_ROWS):
         print("{:>3}".format(max(rewards[state])), end=" ")
     print("")
 # #print(rewards) 
+print(package_locations)
 
 fourRoomsObj.showPath(-1, "image_N.png")
+
+# Display the agent's path to collect the package using 100% explotation
+fourRoomsObj.newEpoch()
+train(0, fourRoomsObj, k)
+fourRoomsObj.showPath(-1, "image_N1.png")
