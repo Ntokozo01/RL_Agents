@@ -2,6 +2,8 @@ from FourRooms import FourRooms
 import numpy as np
 import random
 
+import sys
+
 NUM_ROWS = 13
 NUM_COLS = 13
 
@@ -93,10 +95,15 @@ def train(i, fourRoomsObj, packagesToCollect):
         
     return MAX_ITERATIONS, False
 
-fourRoomsObj = FourRooms("multi")
+bStochastic = False
+if len(sys.argv) >= 2:
+    if sys.argv[1] == "-stochastic":
+        bStochastic = True
+
+fourRoomsObj = FourRooms("multi", bStochastic)
 
 NUM_EPOCHS = 1000
-MAX_ITERATIONS = 2500
+MAX_ITERATIONS = 5000
 
 k = fourRoomsObj.getPackagesRemaining()
 print("Packages to collect:", k)

@@ -1,6 +1,7 @@
 from FourRooms import FourRooms
 import numpy as np
 import random
+import sys
 
 NUM_ROWS = 13
 NUM_COLS = 13
@@ -73,7 +74,7 @@ def train(i, fourRoomsObj, packagesToCollect):
     for j in range(MAX_ITERATIONS):
         action = nextAction(state, exploration_rate)
         
-        gridType, nextState, packagesRemaining, isTerminal = fourRoomsObj.takeAction(action)
+        _ , nextState, packagesRemaining, isTerminal = fourRoomsObj.takeAction(action)
         
         if state != nextState:
            rewards[state][action] = 0
@@ -82,6 +83,7 @@ def train(i, fourRoomsObj, packagesToCollect):
         #    print("Agent took {0} action and moved to {1}".format (action, nextState))
         
         if (packagesToCollect > packagesRemaining):
+            package_locations.update({'RED': nextState})
             packagesToCollect -= 1
             
             rewards[state][action] = 100
@@ -91,13 +93,18 @@ def train(i, fourRoomsObj, packagesToCollect):
         
         if packagesRemaining == 0:
             #fourRoomsObj.showPath(-1, "image_{0}.png".format(i))
-            return j+1
+            return j+1, isTerminal
     
         state = nextState
         
-    return MAX_ITERATIONS
+    return MAX_ITERATIONS, False
 
-fourRoomsObj = FourRooms("simple")
+bStochastic = False
+if len(sys.argv) >= 2:
+    if sys.argv[1] == "-stochastic":
+        bStochastic = True
+
+fourRoomsObj = FourRooms("simple", bStochastic)
 
 NUM_EPOCHS = 100
 MAX_ITERATIONS = 2500
@@ -108,28 +115,35 @@ print("Packages to collect:", k)
 (startX, startY) = fourRoomsObj.getPosition() 
 print("Agent starts at: {0}".format((startX, startY)))
 
+count_success = 0
+package_locations = {}
 for i in range(NUM_EPOCHS):
     fourRoomsObj.newEpoch()
     print('Epoch {0}/{1}'.format(i+1, NUM_EPOCHS))
     
     #print("Epsilon greedy is {0}".format(exploration_rate))
     
-    total_actions = train(i, fourRoomsObj, k)
+    total_actions, isDone = train(i, fourRoomsObj, k)
+    
+    if isDone:
+        count_success += 1
     
     #print("Total actions taken:", total_actions)
     
     exploration_rate = max(0.01, exploration_rate * 0.99)
     
 exploration_rate = 0
+print("Package location is at {0}".format(package_locations))
+print("Success rate is {0}/{1} which is {2}%".format(count_success, NUM_EPOCHS, (count_success / NUM_EPOCHS * 100) ))
 
-print("Q function")
-for y in range(NUM_ROWS):
-    for x in range(NUM_COLS):
-        state = (x, y)
-        #print("Q-values at {0} is for actions: {1}".format((x,y), q_table[(x,y)]))
-        print("{:>3}".format(round(max(q_table[state]))), end=" ")
-    print("")
-#print(q_table) 
+# print("Q function")
+# for y in range(NUM_ROWS):
+#     for x in range(NUM_COLS):
+#         state = (x, y)
+#         #print("Q-values at {0} is for actions: {1}".format((x,y), q_table[(x,y)]))
+#         print("{:>3}".format(round(max(q_table[state]))), end=" ")
+#     print("")
+# #print(q_table) 
 
 # print("Rewards function")
 # # The reward function provides the representation of the observed environment
@@ -143,6 +157,7 @@ for y in range(NUM_ROWS):
 
 # Display the last training agent path
 fourRoomsObj.showPath(-1, "image_N.png")
+
 
 # Display the agent's path to collect the package using 100% explotation
 fourRoomsObj.newEpoch()

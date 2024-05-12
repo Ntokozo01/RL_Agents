@@ -1,5 +1,6 @@
-venv:
-	virtualenv -p python3 venv;
+default:
+	virtualenv -p python3 venv
+	. venv/bin/activate
 
 venv2:
 	python3 -m venv venv
