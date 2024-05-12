@@ -46,11 +46,10 @@ def nextAction(currentState, exploration_rate):
     else:
         a = np.argmax(q_table[currentState])
         
-    
     return MOVES[a]
 
 def train(i, fourRoomsObj, packagesToCollect):
-    global cummulative_reward
+    global cummulative_reward, bBlue, bGreen, bRed
     state = fourRoomsObj.getPosition() # Get initial State of the Agent in the environment
     
     for j in range(MAX_ITERATIONS):
@@ -61,16 +60,48 @@ def train(i, fourRoomsObj, packagesToCollect):
         reward = rewards[state][action]  
         if state != nextState:
             reward -= 1
-            #rewards[state][action] = max(0, reward)
             
-            if (packagesToCollect > packagesRemaining):
+            # If packages are not collected in order, no reward
+            if isTerminal and packagesRemaining != 0:
+                  reward += 1 
+            
+            # If 
+            elif (packagesToCollect > packagesRemaining):
+                print("Package of type {0} collected at {1} with reward {2}".format(gTypes[gridType],nextState, reward))
                 if packagesRemaining == 0 and len(package_locations) != 3:
-                    reward = 500
+                    reward += 500
+                    bBlue = True
+                
+                elif (gridType == FourRooms.RED and bGreen == False and bBlue == False):
+                    reward += 100
+                    bRed = True
+                
+                elif (gridType == FourRooms.GREEN and bRed == True and bBlue == False):
+                    reward += 100
+                    bGreen = True
                     
-                #print("Current reward at {0} is {1}".format(state, reward))
-                package_locations.update({gTypes[gridType]: nextState})
-                if reward < 100:
-                    reward = 100
+                elif (gridType == FourRooms.BLUE and bRed == True and bGreen == True):
+                    reward = +100 
+                    bBlue = True
+                    print("Something1")
+                    
+                # Break the iterations when packages are not collected in correct order
+                elif (gridType == FourRooms.GREEN and bRed == False) or (FourRooms.BLUE and bGreen == False):
+                    reward -= 0  
+                    print("Something2")
+                    
+                else:
+                    #rewards[state][action] = 20
+                    #print("Current reward at {0} is {1}".format(state, reward))
+                    package_locations.update({gTypes[gridType]: nextState})
+                    print("Something3")
+                    
+                #if isTerminal and packagesRemaining != 0:
+                #    reward -= 5
+                #elif reward < 100:
+                #    reward = 100
+                    
+                
                 #print("Package of type {0} collected at {1} with reward {2}".format(gTypes[gridType],nextState, reward))
                 packagesToCollect -= 1   
                 #print("Agent took {0} action and moved to {1} of type {2}".format (action, nextState, gTypes[gridType]))
@@ -85,15 +116,16 @@ def train(i, fourRoomsObj, packagesToCollect):
         q_learn(state, action, nextState) 
         
         
-        if packagesRemaining == 0:
+        if packagesRemaining == 0 or isTerminal:
             #fourRoomsObj.showPath(-1, "image_{0}.png".format(i))
-            return j+1, isTerminal
-    
+            isComplete = isTerminal and (packagesRemaining == 0)
+            return j+1, isComplete
+
         state = nextState
         
     return MAX_ITERATIONS, False
 
-fourRoomsObj = FourRooms("multi")
+fourRoomsObj = FourRooms("rgb")
 
 NUM_EPOCHS = 1000
 MAX_ITERATIONS = 2500
@@ -108,8 +140,13 @@ package_locations = {}
 cummulative_reward = 0
 
 count_success = 0
+
+bRed = False # True when Red was was collected first before Green and Blue
+bGreen = False # True when Green was collected second, after Red and before Blue
+bBlue = False # True when Blue is was collected last, after Red and Green
+
 for i in range(NUM_EPOCHS):
-    cummulative_reward = 0
+    bRed = bBlue = bGreen = False
     fourRoomsObj.newEpoch()
     print('Epoch {0}/{1}'.format(i+1, NUM_EPOCHS))
     
@@ -128,17 +165,17 @@ for i in range(NUM_EPOCHS):
     
 exploration_rate = exploitation # exploits the environment to test the learned policy
 
-# print("Q function")
-# for y in range(NUM_ROWS):
-#     for x in range(NUM_COLS):
-#         state = (x, y)
-#         #print("Q-values at {0} is for actions: {1}".format((x,y), q_table[(x,y)]))
-#         print("{:>6}".format(round(max(q_table[state]))), end=" ")
-#     print("")
-# print(q_table) 
+print("Q function")
+for y in range(NUM_ROWS):
+    for x in range(NUM_COLS):
+        state = (x, y)
+        #print("Q-values at {0} is for actions: {1}".format((x,y), q_table[(x,y)]))
+        print("{:>6}".format(round(max(q_table[state]))), end=" ")
+    print("")
+#print(q_table) 
 
-#print("Rewards function")
-# The reward function provides the representation of the observed environment
+# print("Rewards function")
+# #The reward function provides the representation of the observed environment
 # for y in range(NUM_ROWS):
 #     for x in range(NUM_COLS):
 #         state = (x, y)
